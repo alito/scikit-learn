@@ -329,7 +329,8 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator, MetaEstimatorMixin
     @abstractmethod
     def __init__(self, estimator, scoring=None, loss_func=None,
                  score_func=None, fit_params=None, n_jobs=1, iid=True,
-                 refit=True, cv=None, verbose=0, pre_dispatch='2*n_jobs'):
+                 refit=True, cv=None, verbose=0, pre_dispatch='2*n_jobs',
+                 leastWorst=False):
 
         self.scoring = scoring
         self.estimator = estimator
@@ -342,6 +343,7 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator, MetaEstimatorMixin
         self.cv = cv
         self.verbose = verbose
         self.pre_dispatch = pre_dispatch
+        self.leastWorst = leastWorst
         self._check_estimator()
 
     def score(self, X, y=None):
@@ -456,6 +458,14 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator, MetaEstimatorMixin
         n_fits = len(out)
         n_folds = n_fits // n_param_points
 
+
+        # Note: we do not use max(out) to make ties deterministic even if
+        # comparison on estimator instances is not deterministic
+        if scorer is not None:
+            greater_is_better = scorer.greater_is_better
+        else:
+            greater_is_better = True
+
         scores = list()
         cv_scores = list()
         for grid_start in range(0, n_fits, n_folds):
@@ -465,25 +475,26 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator, MetaEstimatorMixin
             for this_score, clf_params, this_n_test_samples in \
                     out[grid_start:grid_start + n_folds]:
                 these_points.append(this_score)
-                if self.iid:
+                if self.iid and not self.leastWorst:
                     this_score *= this_n_test_samples
                     n_test_samples += this_n_test_samples
                 score += this_score
-            if self.iid:
+
+            if self.leastWorst:
+                if greater_is_better:
+                    score = min(these_points)
+                else:
+                    score = max(these_points)
+            elif self.iid:
                 score /= float(n_test_samples)
             else:
                 score /= float(n_folds)
+
             scores.append((score, clf_params))
             cv_scores.append(these_points)
 
         cv_scores = np.asarray(cv_scores)
 
-        # Note: we do not use max(out) to make ties deterministic even if
-        # comparison on estimator instances is not deterministic
-        if scorer is not None:
-            greater_is_better = scorer.greater_is_better
-        else:
-            greater_is_better = True
 
         if greater_is_better:
             best_score = -np.inf
@@ -652,10 +663,11 @@ class GridSearchCV(BaseSearchCV):
 
     def __init__(self, estimator, param_grid, scoring=None, loss_func=None,
                  score_func=None, fit_params=None, n_jobs=1, iid=True,
-                 refit=True, cv=None, verbose=0, pre_dispatch='2*n_jobs'):
+                 refit=True, cv=None, verbose=0, pre_dispatch='2*n_jobs',
+                 leastWorst=False):
         super(GridSearchCV, self).__init__(
             estimator, scoring, loss_func, score_func, fit_params, n_jobs, iid,
-            refit, cv, verbose, pre_dispatch)
+            refit, cv, verbose, pre_dispatch, leastWorst)
         self.param_grid = param_grid
         _check_param_grid(param_grid)
 
