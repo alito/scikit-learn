@@ -330,7 +330,7 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator, MetaEstimatorMixin
     def __init__(self, estimator, scoring=None, loss_func=None,
                  score_func=None, fit_params=None, n_jobs=1, iid=True,
                  refit=True, cv=None, verbose=0, pre_dispatch='2*n_jobs',
-                 leastWorst=False):
+                 least_worst=False):
 
         self.scoring = scoring
         self.estimator = estimator
@@ -343,7 +343,7 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator, MetaEstimatorMixin
         self.cv = cv
         self.verbose = verbose
         self.pre_dispatch = pre_dispatch
-        self.leastWorst = leastWorst
+        self.least_worst = least_worst
         self._check_estimator()
 
     def score(self, X, y=None):
@@ -475,12 +475,12 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator, MetaEstimatorMixin
             for this_score, clf_params, this_n_test_samples in \
                     out[grid_start:grid_start + n_folds]:
                 these_points.append(this_score)
-                if self.iid and not self.leastWorst:
+                if self.iid and not self.least_worst:
                     this_score *= this_n_test_samples
                     n_test_samples += this_n_test_samples
                 score += this_score
 
-            if self.leastWorst:
+            if self.least_worst:
                 if greater_is_better:
                     score = min(these_points)
                 else:
@@ -664,10 +664,10 @@ class GridSearchCV(BaseSearchCV):
     def __init__(self, estimator, param_grid, scoring=None, loss_func=None,
                  score_func=None, fit_params=None, n_jobs=1, iid=True,
                  refit=True, cv=None, verbose=0, pre_dispatch='2*n_jobs',
-                 leastWorst=False):
+                 least_worst=False):
         super(GridSearchCV, self).__init__(
             estimator, scoring, loss_func, score_func, fit_params, n_jobs, iid,
-            refit, cv, verbose, pre_dispatch, leastWorst)
+            refit, cv, verbose, pre_dispatch, least_worst)
         self.param_grid = param_grid
         _check_param_grid(param_grid)
 
